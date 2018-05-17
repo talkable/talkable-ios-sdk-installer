@@ -1,5 +1,5 @@
 #!/bin/bash
-ARGUMENTS="$((($#)) && printf ' %q' "$@")"
+ARGUMENTS="$*"
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 SCRIPT_PATH="$DIR/$( basename "${BASH_SOURCE[0]}" )"
 VERSION="0.0.2"
@@ -52,14 +52,13 @@ getPlistValue() {
 
 plistBuddyExec() {
   local plistPath=$1
-  cat $2 | while read line
-  do
+  cat $2 | while read -r line; do
     $PLIST_BUDDY -c "$line" "$plistPath" 2>/dev/null
   done
 }
 
 includes() {
-  fgrep -o -q -s $1
+  grep -F -o -q -s "$1"
 }
 
 getJSONValue() {
@@ -84,46 +83,44 @@ downloadAndUnzip() {
 # Actions
 
 selfUpdate() {
-  if [ -n "$REQUIRE_VERSION" ] && [ "$REQUIRE_VERSION" != "$VERSION" ]
-  then
+  if [ -n "$REQUIRE_VERSION" ] && [ "$REQUIRE_VERSION" != "$VERSION" ]; then
     # Installer script was updated and relaunched, but the version is still not the desired version.
     # Don't launch self update again so we don't enter an infinite loop.
     warn "Installer could not be updated to version $REQUIRE_VERSION, is at version $VERSION instead"
     return 0
   fi
 
-  local required_version=$(echo $TALKABLE_DATA | getJSONValue "installer_version")
-  local download_url=""
-  if [ -z "$required_version" ] || [ "$VERSION" = "$required_version" ]
-  then
+  local required_version
+  local download_url
+
+  required_version=$(echo "$TALKABLE_DATA" | getJSONValue "installer_version")
+  if [ -z "$required_version" ] || [ "$VERSION" = "$required_version" ]; then
     verbose "Current installer version $VERSION satisfies requirement"
   else
     verbose "Updating installer script to version $required_version"
-    download_url=$(echo $TALKABLE_DATA | getJSONValue "installer_url")
-    if [ -z "$download_url" ]
-    then
+    download_url=$(echo "$TALKABLE_DATA" | getJSONValue "installer_url")
+    if [ -z "$download_url" ]; then
       warn "Could not fetch URL to download installer update"
       return 0
     fi
     downloadFile "$SCRIPT_PATH" "$download_url"
     chmod +x "$SCRIPT_PATH"
-    /bin/bash "$SCRIPT_PATH" $ARGUMENTS --require-version=$required_version
+    /bin/bash "$SCRIPT_PATH $ARGUMENTS --require-version=$required_version"
     exit 0
   fi
 }
 
 downloadTalkableFramework() {
   local framework_download_needed=true
-  local framework_current_version=""
-  local download_url=""
+  local framework_current_version
+  local download_url
 
   # use framework version from talkable data if not specified
-  [ -z "$FRAMEWORK_VERSION" ] && FRAMEWORK_VERSION=$(echo $TALKABLE_DATA | getJSONValue "framework_version")
+  [ -z "$FRAMEWORK_VERSION" ] && FRAMEWORK_VERSION=$(echo "$TALKABLE_DATA" | getJSONValue "framework_version")
 
   # check if version was fetched correctly and get download url for that version
   # verify version with regex because it can contain error page HTML
-  if [ ! -z "$FRAMEWORK_VERSION" ] && [[ "$FRAMEWORK_VERSION" =~ $VERSION_REGEX ]]
-  then
+  if [ ! -z "$FRAMEWORK_VERSION" ] && [[ "$FRAMEWORK_VERSION" =~ $VERSION_REGEX ]]; then
     download_url="https://talkable-downloads.s3.amazonaws.com/ios-sdk/talkable_ios_sdk_$FRAMEWORK_VERSION.zip"
   else
     FRAMEWORK_VERSION=""
@@ -131,11 +128,9 @@ downloadTalkableFramework() {
   fi
 
   # determine if we need to download framework (not downloaded or downloaded version is different)
-  if [ -f $FRAMEWORK_PLIST_PATH ]
-  then
+  if [ -f "$FRAMEWORK_PLIST_PATH" ]; then
     framework_current_version=$(getPlistValue "$FRAMEWORK_PLIST_PATH" "CFBundleVersion")
-    if [ -z "$FRAMEWORK_VERSION" ] || [ "$FRAMEWORK_VERSION" = "$framework_current_version" ]
-    then
+    if [ -z "$FRAMEWORK_VERSION" ] || [ "$FRAMEWORK_VERSION" = "$framework_current_version" ]; then
       verbose "Current SDK version $framework_current_version satisfies requirement"
       framework_download_needed=false
     else
@@ -145,8 +140,7 @@ downloadTalkableFramework() {
     verbose "Downloaded SDK was not found."
   fi
 
-  if $framework_download_needed
-  then
+  if $framework_download_needed; then
     rm -rf "$FRAMEWORK_PATH"
     downloadAndUnzip "$download_url" "$PROJECT_DIR/talkable-framework.zip" "$FRAMEWORK_DIR"
   fi
@@ -156,8 +150,7 @@ downloadGetSocialInstaller() {
   # check if getsocial installer version was fetched correctly
   [ -z "$GETSOCIAL_VERSION" ] && GETSOCIAL_VERSION=$(curl -s -X GET "$GETSOCIAL_VERSION_URL" | getJSONValue "version")
 
-  if [ -z "$GETSOCIAL_VERSION" ] || [[ ! "$GETSOCIAL_VERSION" =~ $VERSION_REGEX ]]
-  then
+  if [ -z "$GETSOCIAL_VERSION" ] || [[ ! "$GETSOCIAL_VERSION" =~ $VERSION_REGEX ]]; then
     verbose "Could not fetch latest GetSocial installer version, using v$DEFAULT_GETSOCIAL_VERSION"
     GETSOCIAL_VERSION=$DEFAULT_GETSOCIAL_VERSION
   fi
@@ -167,8 +160,7 @@ downloadGetSocialInstaller() {
   #download und unzip GetSocial installer if needed
   GETSOCIAL_INSTALLER_DIR="$PROJECT_DIR/getsocial-installer-script-$GETSOCIAL_VERSION"
 
-  if [ ! -e "$GETSOCIAL_INSTALLER_DIR/installer.py" ]
-  then
+  if [ ! -e "$GETSOCIAL_INSTALLER_DIR/installer.py" ]; then
     verbose "Downloading GetSocial installer script..."
     rm -rf "$PROJECT_DIR"/getsocial-installer-script-*
     downloadAndUnzip "$getsocisal_download_url" "$PROJECT_DIR/getsocial-installer-script.zip" "$GETSOCIAL_INSTALLER_DIR"
@@ -182,8 +174,7 @@ addTalkableFrameworkToProject() {
   [ ! -f "$FRAMEWORK_PLIST_PATH" ] && fatal "Talkable SDK could not be downloaded"
   [ ! -e "$GETSOCIAL_INSTALLER_DIR/installer.py" ] && fatal "GetSocial installer script could not be downloaded"
 
-  if getPlistValue "$PROJECT_FILE_PATH/project.pbxproj" | includes "$FRAMEWORK_NAME"
-  then
+  if getPlistValue "$PROJECT_FILE_PATH/project.pbxproj" | includes "$FRAMEWORK_NAME"; then
     verbose "SDK already added to $PROJECT_FILE_PATH"
     return 0
   fi
@@ -207,8 +198,7 @@ if len(added_files) > 0: project.save()
   #add Talkable SDK to project
   verbose "Adding SDK to XCode Project file: $PROJECT_FILE_PATH"
   $PYTHON -c "$PYTHON_SCRIPT"
-  if getPlistValue "$PROJECT_FILE_PATH/project.pbxproj" | includes "$FRAMEWORK_NAME"
-  then
+  if getPlistValue "$PROJECT_FILE_PATH/project.pbxproj" | includes "$FRAMEWORK_NAME"; then
     verbose "SDK added to $PROJECT_FILE_PATH"
   else
     fatal "SDK could not be added to $PROJECT_FILE_PATH"
@@ -220,8 +210,7 @@ configureInfoPlist() {
   local infoplist_full_path="$PROJECT_DIR/$INFOPLIST_FILE"
 
   #add Talkable URL Scheme to info.plist
-  if getPlistValue "$infoplist_full_path" "CFBundleURLTypes" | includes "$url_scheme_name"
-  then
+  if getPlistValue "$infoplist_full_path" "CFBundleURLTypes" | includes "$url_scheme_name"; then
     verbose "URL Scheme $url_scheme_name already exists in $infoplist_full_path"
   else
     verbose "Adding URL scheme $url_scheme_name to $infoplist_full_path"
@@ -236,8 +225,7 @@ EOF
   fi
 
   #add Talkable Query Scheme to info.plist
-  if getPlistValue "$infoplist_full_path" "LSApplicationQueriesSchemes" | includes "$url_scheme_name"
-  then
+  if getPlistValue "$infoplist_full_path" "LSApplicationQueriesSchemes" | includes "$url_scheme_name"; then
     verbose "Query Scheme $url_scheme_name already exists in $infoplist_full_path"
   else
     verbose "Adding Query Scheme $url_scheme_name to $infoplist_full_path"
@@ -249,38 +237,42 @@ EOF
 }
 
 callGetSocialInstaller() {
-  $PYTHON "$GETSOCIAL_INSTALLER_DIR/installer.py" --app-id $GETSOCIAL_APP_ID $GETSOCIAL_PARAMS --debug $( $DEBUG && echo 'true' || echo 'false' )
+  $PYTHON $GETSOCIAL_INSTALLER_DIR/installer.py --app-id $GETSOCIAL_APP_ID $GETSOCIAL_PARAMS --debug $( $DEBUG && echo 'true' || echo 'false' )
+}
+
+cleanUp() {
+  rm -f "$PROJECT_DIR/frameworks.zip"
 }
 
 # Parse Arguments
 
 while [ "$1" != "" ]; do
-    PARAM=`echo $1 | awk -F= '{print $1}'`
-    VALUE=`echo $1 | awk -F= '{print $2}'`
-    case $PARAM in
-        --site-id | -s)
-            SITE_ID=$VALUE
-            ;;
-        --api-key | -k)
-            API_KEY=$VALUE
-            ;;
-        --version | -v)
-            FRAMEWORK_VERSION=$VALUE
-            ;;
-        --getsocial-app-id | -g)
-            GETSOCIAL_APP_ID=$VALUE
-            ;;
-        --require-version)
-            REQUIRE_VERSION=$VALUE
-            ;;
-        --debug)
-            DEBUG=true
-            ;;
-        *)
-            fatal "unknown parameter \"$PARAM\""
-            ;;
-    esac
-    shift
+  PARAM=$( echo "$1" | awk -F= '{print $1}' )
+  VALUE=$( echo "$1" | awk -F= '{print $2}' )
+  case $PARAM in
+      --site-id | -s)
+          SITE_ID=$VALUE
+          ;;
+      --api-key | -k)
+          API_KEY=$VALUE
+          ;;
+      --version | -v)
+          FRAMEWORK_VERSION=$VALUE
+          ;;
+      --getsocial-app-id | -g)
+          GETSOCIAL_APP_ID=$VALUE
+          ;;
+      --require-version)
+          REQUIRE_VERSION=$VALUE
+          ;;
+      --debug)
+          DEBUG=true
+          ;;
+      *)
+          fatal "unknown parameter \"$PARAM\""
+          ;;
+  esac
+  shift
 done
 
 [ -z "$SITE_ID" ] && fatal "--site-id param is mandatory"
@@ -290,7 +282,7 @@ done
 
 TALKABLE_DATA=$(curl -s -X GET "$TALKABLE_VERSION_URL") #this request will call Talkable API and contain site ID and API key
 
-[ -z "$GETSOCIAL_APP_ID" ] && GETSOCIAL_APP_ID=$(echo $TALKABLE_DATA | getJSONValue "getsocial_app_id")
+[ -z "$GETSOCIAL_APP_ID" ] && GETSOCIAL_APP_ID=$(echo "$TALKABLE_DATA" | getJSONValue "getsocial_app_id")
 [ -z "$GETSOCIAL_APP_ID" ] && fatal "Could not fetch GetSocial App ID"
 
 verbose "Site ID: $SITE_ID, API Key: $API_KEY, GetSocial App ID: $GETSOCIAL_APP_ID"
@@ -304,3 +296,4 @@ downloadGetSocialInstaller
 addTalkableFrameworkToProject
 configureInfoPlist
 callGetSocialInstaller
+cleanUp
