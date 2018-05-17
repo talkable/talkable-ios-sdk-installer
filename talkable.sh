@@ -237,7 +237,7 @@ EOF
 }
 
 callGetSocialInstaller() {
-  $PYTHON $GETSOCIAL_INSTALLER_DIR/installer.py --app-id $GETSOCIAL_APP_ID $GETSOCIAL_PARAMS --debug $( $DEBUG && echo 'true' || echo 'false' )
+  $PYTHON "$GETSOCIAL_INSTALLER_DIR/installer.py" --app-id "$GETSOCIAL_APP_ID" $GETSOCIAL_PARAMS --debug $( $DEBUG && echo 'true' || echo 'false' )
 }
 
 cleanUp() {
