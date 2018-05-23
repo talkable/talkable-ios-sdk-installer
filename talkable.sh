@@ -177,17 +177,23 @@ configureInfoPlist() {
   local infoplist_full_path="$PROJECT_DIR/$INFOPLIST_FILE"
 
   if [ "$(getPlistValue "$infoplist_full_path" "$INFOPLIST_KEY_SITE_ID")" != "$SITE_ID" ]; then
+    verbose "Adding Talkable Site ID to $infoplist_full_path as $INFOPLIST_KEY_SITE_ID"
     plistBuddyExec "$infoplist_full_path" << EOF
 Add :$INFOPLIST_KEY_SITE_ID string $SITE_ID
-Set :$INFOPLIST_KEY_SITE_ID $SITE_ID
+Set :$INFOPLIST_KEY_SITE_ID string $SITE_ID
 EOF
+  else
+    verbose "Talkable Site ID already added to $infoplist_full_path"
   fi
 
   if [ "$(getPlistValue "$infoplist_full_path" "$INFOPLIST_KEY_API_KEY")" != "$API_KEY" ]; then
+    verbose "Adding Talkable API Key $infoplist_full_path as $INFOPLIST_KEY_API_KEY"
     plistBuddyExec "$infoplist_full_path" << EOF
 Add :$INFOPLIST_KEY_API_KEY string $API_KEY
-Set :$INFOPLIST_KEY_API_KEY $API_KEY
+Set :$INFOPLIST_KEY_API_KEY string $API_KEY
 EOF
+  else
+    verbose "Talkable API Key added to $infoplist_full_path"
   fi
 
   #add Talkable URL Scheme to info.plist
