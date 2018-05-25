@@ -180,7 +180,7 @@ configureInfoPlist() {
     verbose "Adding Talkable Site ID to $infoplist_full_path as $INFOPLIST_KEY_SITE_ID"
     plistBuddyExec "$infoplist_full_path" << EOF
 Add :$INFOPLIST_KEY_SITE_ID string $SITE_ID
-Set :$INFOPLIST_KEY_SITE_ID string $SITE_ID
+Set :$INFOPLIST_KEY_SITE_ID $SITE_ID
 EOF
   else
     verbose "Talkable Site ID already added to $infoplist_full_path"
@@ -190,7 +190,7 @@ EOF
     verbose "Adding Talkable API Key $infoplist_full_path as $INFOPLIST_KEY_API_KEY"
     plistBuddyExec "$infoplist_full_path" << EOF
 Add :$INFOPLIST_KEY_API_KEY string $API_KEY
-Set :$INFOPLIST_KEY_API_KEY string $API_KEY
+Set :$INFOPLIST_KEY_API_KEY $API_KEY
 EOF
   else
     verbose "Talkable API Key added to $infoplist_full_path"
