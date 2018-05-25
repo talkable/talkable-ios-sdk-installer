@@ -23,7 +23,8 @@ GETSOCIAL_VERSION_URL="https://downloads.getsocial.im/ios-installer/releases/lat
 FRAMEWORK_BUNDLE_ID='com.talkable.ios-sdk'
 INFOPLIST_KEY_SITE_ID="$FRAMEWORK_BUNDLE_ID.site_slug"
 INFOPLIST_KEY_API_KEY="$FRAMEWORK_BUNDLE_ID.api_key"
-GETSOCIAL_PARAMS="--use-ui=false --ignore-cocoapods=true"
+GETSOCIAL_INSTALLER_DIR="$(ls -d "$PROJECT_DIR"/getsocial-installer-script-* 2>/dev/null)"
+GETSOCIAL_PARAMS="--use-ui false --ignore-cocoapods true --autoregister-push false"
 
 # Helper Functions
 
@@ -111,6 +112,11 @@ downloadTalkableFramework() {
 }
 
 downloadGetSocialInstaller() {
+  if [ -e "$GETSOCIAL_INSTALLER_DIR/installer.py" ]; then
+    verbose "GetSocial installer script already downloaded in $GETSOCIAL_INSTALLER_DIR"
+    return 0
+  fi
+
   # check if getsocial installer version was fetched correctly
   [ -z "$GETSOCIAL_VERSION" ] && GETSOCIAL_VERSION=$(curl -s -X GET "$GETSOCIAL_VERSION_URL" | getJSONValue "version")
 
@@ -119,18 +125,12 @@ downloadGetSocialInstaller() {
     GETSOCIAL_VERSION=$DEFAULT_GETSOCIAL_VERSION
   fi
 
+  #download und unzip GetSocial installer
+  GETSOCIAL_INSTALLER_DIR="$PROJECT_DIR/getsocial-installer-script-$GETSOCIAL_VERSION"
   local getsocial_download_url="https://downloads.getsocial.im/ios-installer/releases/ios-installer-$GETSOCIAL_VERSION.zip"
 
-  #download und unzip GetSocial installer if needed
-  GETSOCIAL_INSTALLER_DIR="$PROJECT_DIR/getsocial-installer-script-$GETSOCIAL_VERSION"
-
-  if [ ! -e "$GETSOCIAL_INSTALLER_DIR/installer.py" ]; then
-    verbose "Downloading GetSocial installer script..."
-    rm -rf "$PROJECT_DIR"/getsocial-installer-script-*
-    downloadAndUnzip "$getsocial_download_url" "$PROJECT_DIR/getsocial-installer-script.zip" "$GETSOCIAL_INSTALLER_DIR"
-  else
-    verbose "GetSocial installer script v$GETSOCIAL_VERSION already downloaded"
-  fi
+  verbose "Downloading GetSocial installer script..."
+  downloadAndUnzip "$getsocial_download_url" "$PROJECT_DIR/getsocial-installer-script.zip" "$GETSOCIAL_INSTALLER_DIR"
 }
 
 addTalkableFrameworkToProject() {
@@ -224,6 +224,7 @@ EOF
 }
 
 callGetSocialInstaller() {
+  [ ! -e "$GETSOCIAL_INSTALLER_DIR/installer.py" ] && fatal "GetSocial installer script could not be downloaded"
   $PYTHON "$GETSOCIAL_INSTALLER_DIR/installer.py" --app-id "$GETSOCIAL_APP_ID" $GETSOCIAL_PARAMS --debug $( $DEBUG && echo 'true' || echo 'false' )
 }
 
@@ -258,6 +259,13 @@ while [ "$1" != "" ]; do
   esac
   shift
 done
+
+[ -z "$PROJECT_DIR" ] && fatal "PROJECT_DIR env variable must contain path to project folder"
+[ -z "$PROJECT_FILE_PATH" ] && fatal "PROJECT_FILE_PATH env variable must contain path to .xcodeproj folder"
+[ -z "$PROJECT_NAME" ] && fatal "PROJECT_NAME env variable must contain project name"
+[ -z "$TARGET_NAME" ] && fatal "TARGET_NAME env variable must contain target name"
+[ -z "$INFOPLIST_FILE" ] && fatal "INFOPLIST_FILE env variable must contain path to project's Info.plist file"
+
 
 [ -z "$SITE_ID" ] && fatal "--site-id param is mandatory"
 [ -z "$API_KEY" ] && fatal "--api-key param is mandatory"
