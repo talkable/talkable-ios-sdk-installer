@@ -1,6 +1,4 @@
 #!/bin/bash
-DEBUG=false
-
 PYTHON="python"
 PLIST_BUDDY="/usr/libexec/PlistBuddy"
 
@@ -15,21 +13,16 @@ API_KEY=""
 GETSOCIAL_APP_ID=""
 FRAMEWORK_VERSION=""
 
-FRAMEWORK_NAME="TalkableSDK"
-FRAMEWORK_DIR="$PROJECT_DIR/$FRAMEWORK_NAME"
-FRAMEWORK_PATH="$FRAMEWORK_DIR/$FRAMEWORK_NAME.framework"
-FRAMEWORK_PLIST_PATH="$FRAMEWORK_PATH/Info.plist"
-GETSOCIAL_VERSION_URL="https://downloads.getsocial.im/ios-installer/releases/latest.json"
-FRAMEWORK_BUNDLE_ID='com.talkable.ios-sdk'
-INFOPLIST_KEY_SITE_ID="$FRAMEWORK_BUNDLE_ID.site_slug"
-INFOPLIST_KEY_API_KEY="$FRAMEWORK_BUNDLE_ID.api_key"
-GETSOCIAL_INSTALLER_DIR="$(ls -d "$PROJECT_DIR"/getsocial-installer-script-* 2>/dev/null)"
-GETSOCIAL_PARAMS="--use-ui false --ignore-cocoapods true --autoregister-push false"
+PROJECT_DIR=""
+PROJECT_FILE_PATH=""
+PROJECT_NAME=""
+TARGET_NAME=""
+INFOPLIST_FILE=""
 
 # Helper Functions
 
 verbose() {
-  $DEBUG && echo -e "${GREEN}Talkable: $1${NOCOLOR}"
+  echo -e "${GREEN}Talkable: $1${NOCOLOR}"
 }
 
 warn() {
@@ -88,8 +81,8 @@ downloadTalkableFramework() {
   if [ ! -z "$FRAMEWORK_VERSION" ] && [[ "$FRAMEWORK_VERSION" =~ $VERSION_REGEX ]]; then
     download_url="https://talkable-downloads.s3.amazonaws.com/ios-sdk/talkable_ios_sdk_$FRAMEWORK_VERSION.zip"
   else
-    FRAMEWORK_VERSION=""
-    download_url="https://talkable-downloads.s3.amazonaws.com/ios-sdk/talkable_ios_sdk.zip"
+    FRAMEWORK_VERSION="1.5.0"
+    download_url="https://talkable-downloads.s3.amazonaws.com/ios-sdk/talkable_ios_sdk_1.5.0.zip"
   fi
 
   # determine if we need to download framework (not downloaded or downloaded version is different)
@@ -224,12 +217,14 @@ EOF
 }
 
 callGetSocialInstaller() {
+  [ -z "$GETSOCIAL_APP_ID" ] && verbose "--getsocial-app-id (-g) param not provided. Skipping GetSocial configuration" && return 0
   [ ! -e "$GETSOCIAL_INSTALLER_DIR/installer.py" ] && fatal "GetSocial installer script could not be downloaded"
-  $PYTHON "$GETSOCIAL_INSTALLER_DIR/installer.py" --app-id "$GETSOCIAL_APP_ID" $GETSOCIAL_PARAMS --debug $( $DEBUG && echo 'true' || echo 'false' )
+  $PYTHON "$GETSOCIAL_INSTALLER_DIR/installer.py" --app-id "$GETSOCIAL_APP_ID" $GETSOCIAL_PARAMS --debug true
 }
 
 cleanUp() {
   rm -f "$PROJECT_DIR/frameworks.zip"
+  rm -rf "$GETSOCIAL_INSTALLER_DIR"
 }
 
 # Parse Arguments
@@ -250,9 +245,6 @@ while [ "$1" != "" ]; do
       --getsocial-app-id | -g)
           GETSOCIAL_APP_ID=$VALUE
           ;;
-      --debug)
-          DEBUG=true
-          ;;
       *)
           fatal "unknown parameter \"$PARAM\""
           ;;
@@ -260,16 +252,30 @@ while [ "$1" != "" ]; do
   shift
 done
 
+if [ -z "$PROJECT_FILE_PATH" ]; then
+  verbose "XCode env variables not found, extracting from xcodebuild"
+  eval "$(xcodebuild -showBuildSettings | grep -E 'PROJECT_DIR|PROJECT_FILE_PATH|PROJECT_NAME|TARGET_NAME|INFOPLIST_FILE' | sed -e 's/ = /="/' -e 's/$/"/' -e 's/^[[:space:]]*//' -e 's/^/export /')"
+fi
+
 [ -z "$PROJECT_DIR" ] && fatal "PROJECT_DIR env variable must contain path to project folder"
 [ -z "$PROJECT_FILE_PATH" ] && fatal "PROJECT_FILE_PATH env variable must contain path to .xcodeproj folder"
 [ -z "$PROJECT_NAME" ] && fatal "PROJECT_NAME env variable must contain project name"
 [ -z "$TARGET_NAME" ] && fatal "TARGET_NAME env variable must contain target name"
 [ -z "$INFOPLIST_FILE" ] && fatal "INFOPLIST_FILE env variable must contain path to project's Info.plist file"
 
+FRAMEWORK_NAME="TalkableSDK"
+FRAMEWORK_DIR="$PROJECT_DIR/$FRAMEWORK_NAME"
+FRAMEWORK_PATH="$FRAMEWORK_DIR/$FRAMEWORK_NAME.framework"
+FRAMEWORK_PLIST_PATH="$FRAMEWORK_PATH/Info.plist"
+GETSOCIAL_VERSION_URL="https://downloads.getsocial.im/ios-installer/releases/latest.json"
+FRAMEWORK_BUNDLE_ID='com.talkable.ios-sdk'
+INFOPLIST_KEY_SITE_ID="$FRAMEWORK_BUNDLE_ID.site_slug"
+INFOPLIST_KEY_API_KEY="$FRAMEWORK_BUNDLE_ID.api_key"
+GETSOCIAL_INSTALLER_DIR="$(ls -d "$PROJECT_DIR"/getsocial-installer-script-* 2>/dev/null)"
+GETSOCIAL_PARAMS="--use-ui false --ignore-cocoapods true --autoregister-push false"
 
-[ -z "$SITE_ID" ] && fatal "--site-id param is mandatory"
-[ -z "$API_KEY" ] && fatal "--api-key param is mandatory"
-[ -z "$GETSOCIAL_APP_ID" ] && fatal "--getsocial-app-id param is mandatory"
+[ -z "$SITE_ID" ] && fatal "--site-id (-s) param is mandatory"
+[ -z "$API_KEY" ] && fatal "--api-key (-k) param is mandatory"
 
 verbose "Site ID: $SITE_ID, API Key: $API_KEY, GetSocial App ID: $GETSOCIAL_APP_ID"
 

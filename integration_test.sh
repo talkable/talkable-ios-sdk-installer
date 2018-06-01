@@ -27,12 +27,12 @@ exists() {
 }
 
 performTest() {
-  bash "$PROJECT_DIR/talkable.sh" -s=badger -k=mushroom -g=F8899676O7EZt --debug=true
+  PROJECT_DIR="" PROJECT_FILE_PATH="" PROJECT_NAME="" TARGET_NAME="" INFOPLIST_FILE="" bash "$PROJECT_DIR/talkable.sh" -s=badger -k=mushroom -g=F8899676O7EZt --debug=true
 
-  exists "$PROJECT_DIR/getsocial-installer-script-*/installer.py" || fatal "GetSocial installer script was not downloaded"
   [ -d "$PROJECT_DIR/TalkableSDK/TalkableSDK.framework" ] || fatal "TalkableSDK was not downloaded"
   [ -d "$PROJECT_DIR/GetSocial/GetSocial.framework" ] || fatal "GetSocial SDK was not downloaded"
   [ ! -e "$PROJECT_DIR/frameworks.zip" ] || fatal "Temporary ZIP file $PROJECT_DIR/frameworks.zip was not removed"
+  exists "$PROJECT_DIR/getsocial-installer-script-*" && fatal "GetSocial installer script dir was not removed"
 
   $PLIST_BUDDY -c "Print" "$PROJECT_FILE_PATH/project.pbxproj" | includes "TalkableSDK/TalkableSDK.framework" || fatal "Talkable Framework was not added to the project"
   $PLIST_BUDDY -c "Print" "$PROJECT_FILE_PATH/project.pbxproj" | includes "GetSocial/GetSocial.framework" || fatal "GetSocial Framework was not added to the project"
