@@ -3,10 +3,11 @@
 ## Usage
 
 1. Put the script into project root folder
-2. Add a Run Script phase to the XCode project, move it before the 'Compile Sources' phase
-3. Add the following code to the new Run Script phase:
+2. Run the script with the following arguments:
 
-`$PROJECT_DIR/talkable.sh -s=your_site_id -k=your_api_key --debug=true`
+`/bin/bash talkable.sh --site-id=YOUR_TALKABLE_SITE_ID --api-key=YOUR_TALKABLE_PUBLIC_API_KEY --getsocial-app-id=YOUR_GETSOCIAL_APP_ID`
+
+Replace YOUR_TALKABLE_SITE_ID with your real Talkable Site ID, YOUR_TALKABLE_PUBLIC_API_KEY with your public API key, and YOUR_GETSOCIAL_APP_ID with your GetSocial App ID.
 
 ## Testing
 
