@@ -2,7 +2,7 @@
 
 ## Usage
 
-1. Put the script into project root folder
+1. Put `talkable.sh` into your project root folder.
 2. Run the script with the following arguments:
 
 `/bin/bash talkable.sh --site-id=YOUR_TALKABLE_SITE_ID --api-key=YOUR_TALKABLE_PUBLIC_API_KEY --getsocial-app-id=YOUR_GETSOCIAL_APP_ID`
